@@ -90,6 +90,20 @@ message AdminFormSection {
   bool   collapsed_default = 5;
   repeated string field_keys = 6;
   repeated AdminFormCondition show_when = 7;
+  // add_group makes the section one slot of a list the admin grows. Sections
+  // with the same add_group are its slots, in form order. The form shows the
+  // first slot and every slot up to the last one that holds a value other
+  // than its fields' defaults, then a button that reveals the next slot. The
+  // slots' fields are ordinary config keys, so the list is as long as the
+  // sections the plugin declares. The admin can also change the order of the
+  // slots: two slots trade places by trading the values of their fields at
+  // the same position in field_keys, so every slot of a list declares the
+  // same fields in the same order. A slot whose first field is a text field
+  // shows that value in its header. Empty = an ordinary section.
+  string add_group = 8;
+  // add_label is the text of that button, such as "Add storage group".
+  // Required when add_group is set.
+  string add_label = 9;
 }
 
 message AdminFormDescriptor {

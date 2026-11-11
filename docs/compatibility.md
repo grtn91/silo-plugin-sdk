@@ -198,6 +198,16 @@ Hosts read the field from the capability metadata stored when the plugin was
 installed or updated, so it takes effect after the plugin is next updated on a
 host that reads it.
 
+`AdminFormSection.add_group` and `add_label` turn sections into the slots of a
+list the admin grows with a button. Empty means an ordinary section, which is
+the behaviour hosts had before the fields existed. Hosts that predate them drop
+them as unknown fields when they install a plugin archive, and show every slot
+as its own section, so the form still works there. Silo reads a bare plugin
+binary's manifest strictly, so a Silo host that predates the fields refuses to
+install a binary that declares them; install it from an archive there. The
+slots' fields are ordinary config keys, so nothing changes in what the plugin
+reads.
+
 `MetadataItem.overview_language` and the `title_language` and
 `overview_language` fields on `SeasonRecord` and `EpisodeRecord` (added in
 v0.29.0) are plain strings, like the older `MetadataItem.title_language`.

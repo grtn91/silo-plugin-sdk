@@ -322,3 +322,45 @@ func TestForwardReferenceShowWhenPassesValidation(t *testing.T) {
 		t.Fatalf("Load rejected valid rich admin form with forward-referencing show_when: %v", err)
 	}
 }
+
+// TestSectionAddGroup checks the sections of a list the admin grows: a slot
+// needs the label of the button that reveals the next one, and a label needs
+// a list.
+func TestSectionAddGroup(t *testing.T) {
+	load := func(sections string) error {
+		_, err := manifest.Load([]byte(`{
+		  "plugin_id": "silo.example",
+		  "version": "1.0.0",
+		  "silo_api_version": "v1",
+		  "capabilities": [{
+		    "type": "request_router.v1", "id": "arr", "display_name": "X", "description": "Y",
+		    "config_schema": [{
+		      "key": "connection",
+		      "title": "Connection",
+		      "json_schema": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"string\"},\"b\":{\"type\":\"string\"}}}",
+		      "admin_form": {
+		        "fields": [
+		          {"key":"a","label":"A","control":"ADMIN_FORM_CONTROL_TEXT"},
+		          {"key":"b","label":"B","control":"ADMIN_FORM_CONTROL_TEXT"}
+		        ],
+		        "sections": ` + sections + `
+		      }
+		    }]
+		  }]
+		}`))
+		return err
+	}
+	if err := load(`[
+	  {"key":"one","title":"One","field_keys":["a"],"add_group":"slots","add_label":"Add slot"},
+	  {"key":"two","title":"Two","field_keys":["b"],"add_group":"slots","add_label":"Add slot"}]`); err != nil {
+		t.Fatalf("Load refused a list of slots: %v", err)
+	}
+	for name, sections := range map[string]string{
+		"a slot without a label": `[{"key":"one","title":"One","field_keys":["a"],"add_group":"slots"}]`,
+		"a label without a list": `[{"key":"one","title":"One","field_keys":["a"],"add_label":"Add slot"}]`,
+	} {
+		if err := load(sections); err == nil || !strings.Contains(err.Error(), "add_label") {
+			t.Fatalf("%s: want an add_label error, got %v", name, err)
+		}
+	}
+}

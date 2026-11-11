@@ -600,8 +600,22 @@ type AdminFormSection struct {
 	CollapsedDefault bool                   `protobuf:"varint,5,opt,name=collapsed_default,json=collapsedDefault,proto3" json:"collapsed_default,omitempty"`
 	FieldKeys        []string               `protobuf:"bytes,6,rep,name=field_keys,json=fieldKeys,proto3" json:"field_keys,omitempty"`
 	ShowWhen         []*AdminFormCondition  `protobuf:"bytes,7,rep,name=show_when,json=showWhen,proto3" json:"show_when,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// add_group makes the section one slot of a list the admin grows. Sections
+	// with the same add_group are its slots, in form order. The form shows the
+	// first slot and every slot up to the last one that holds a value other
+	// than its fields' defaults, then a button that reveals the next slot. The
+	// slots' fields are ordinary config keys, so the list is as long as the
+	// sections the plugin declares. The admin can also change the order of the
+	// slots: two slots trade places by trading the values of their fields at
+	// the same position in field_keys, so every slot of a list declares the
+	// same fields in the same order. A slot whose first field is a text field
+	// shows that value in its header. Empty = an ordinary section.
+	AddGroup string `protobuf:"bytes,8,opt,name=add_group,json=addGroup,proto3" json:"add_group,omitempty"`
+	// add_label is the text of that button, such as "Add storage group".
+	// Required when add_group is set.
+	AddLabel      string `protobuf:"bytes,9,opt,name=add_label,json=addLabel,proto3" json:"add_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminFormSection) Reset() {
@@ -681,6 +695,20 @@ func (x *AdminFormSection) GetShowWhen() []*AdminFormCondition {
 		return x.ShowWhen
 	}
 	return nil
+}
+
+func (x *AdminFormSection) GetAddGroup() string {
+	if x != nil {
+		return x.AddGroup
+	}
+	return ""
+}
+
+func (x *AdminFormSection) GetAddLabel() string {
+	if x != nil {
+		return x.AddLabel
+	}
+	return ""
 }
 
 type AdminFormDescriptor struct {
@@ -1672,7 +1700,7 @@ const file_silo_plugin_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"min_length\x18\x06 \x01(\x05R\tminLength\x12\x1d\n" +
 	"\n" +
-	"max_length\x18\a \x01(\x05R\tmaxLength\"\x8b\x02\n" +
+	"max_length\x18\a \x01(\x05R\tmaxLength\"\xc5\x02\n" +
 	"\x10AdminFormSection\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -1681,7 +1709,9 @@ const file_silo_plugin_v1_common_proto_rawDesc = "" +
 	"\x11collapsed_default\x18\x05 \x01(\bR\x10collapsedDefault\x12\x1d\n" +
 	"\n" +
 	"field_keys\x18\x06 \x03(\tR\tfieldKeys\x12?\n" +
-	"\tshow_when\x18\a \x03(\v2\".silo.plugin.v1.AdminFormConditionR\bshowWhen\"\xae\x01\n" +
+	"\tshow_when\x18\a \x03(\v2\".silo.plugin.v1.AdminFormConditionR\bshowWhen\x12\x1b\n" +
+	"\tadd_group\x18\b \x01(\tR\baddGroup\x12\x1b\n" +
+	"\tadd_label\x18\t \x01(\tR\baddLabel\"\xae\x01\n" +
 	"\x13AdminFormDescriptor\x126\n" +
 	"\x06fields\x18\x01 \x03(\v2\x1e.silo.plugin.v1.AdminFormFieldR\x06fields\x12!\n" +
 	"\fsubmit_label\x18\x02 \x01(\tR\vsubmitLabel\x12<\n" +

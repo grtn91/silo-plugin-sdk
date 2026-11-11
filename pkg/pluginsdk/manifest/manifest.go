@@ -420,6 +420,10 @@ func validateRequesterOptions(descriptor *pluginv1.CapabilityDescriptor) error {
 // call and asks ListRemoteState for pages of that size.
 const MaxWatchSyncBatchSize = 1000
 
+// MaxAdminFormAddLabelRunes limits an admin form section's add_label, in
+// characters.
+const MaxAdminFormAddLabelRunes = 40
+
 // Limits on RequestRouterWording values, in characters.
 const (
 	MaxRequestWordingLabelRunes  = 24
@@ -817,6 +821,15 @@ func validateConfigSchema(schema *pluginv1.ConfigSchema) error {
 	for _, section := range form.GetSections() {
 		if section == nil {
 			continue
+		}
+		if section.GetAddGroup() == "" && section.GetAddLabel() != "" {
+			return fmt.Errorf("plugin config schema %q admin_form section %q add_label needs add_group", schema.GetKey(), section.GetKey())
+		}
+		if section.GetAddGroup() != "" {
+			label := strings.TrimSpace(section.GetAddLabel())
+			if label == "" || utf8.RuneCountInString(label) > MaxAdminFormAddLabelRunes {
+				return fmt.Errorf("plugin config schema %q admin_form section %q add_label must be 1 to %d characters", schema.GetKey(), section.GetKey(), MaxAdminFormAddLabelRunes)
+			}
 		}
 		for _, fk := range section.GetFieldKeys() {
 			if _, ok := seen[fk]; !ok {
