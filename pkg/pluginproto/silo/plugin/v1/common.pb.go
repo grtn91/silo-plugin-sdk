@@ -302,8 +302,14 @@ type AdminFormField struct {
 	// group; at most one connection per distinct value of that field may have THIS
 	// field truthy. Empty = no exclusivity.
 	ExclusiveGroupField string `protobuf:"bytes,15,opt,name=exclusive_group_field,json=exclusiveGroupField,proto3" json:"exclusive_group_field,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// ordered says the order of a MULTI_SELECT's values matters, such as
+	// folders that are filled one after another. The host shows the chosen
+	// values as a list the admin can put in order, and stores them in that
+	// order. False = the values are a set, in no particular order. Only valid
+	// on ADMIN_FORM_CONTROL_MULTI_SELECT.
+	Ordered       bool `protobuf:"varint,16,opt,name=ordered,proto3" json:"ordered,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminFormField) Reset() {
@@ -439,6 +445,13 @@ func (x *AdminFormField) GetExclusiveGroupField() string {
 		return x.ExclusiveGroupField
 	}
 	return ""
+}
+
+func (x *AdminFormField) GetOrdered() bool {
+	if x != nil {
+		return x.Ordered
+	}
+	return false
 }
 
 // AdminFormCondition: the owning field/section is shown only when, for every
@@ -609,7 +622,9 @@ type AdminFormSection struct {
 	// slots: two slots trade places by trading the values of their fields at
 	// the same position in field_keys, so every slot of a list declares the
 	// same fields in the same order. A slot whose first field is a text field
-	// shows that value in its header. Empty = an ordinary section.
+	// shows that value in its header. The admin can also remove a slot: the
+	// slots after it move up one place and the last one is emptied. Empty = an
+	// ordinary section.
 	AddGroup string `protobuf:"bytes,8,opt,name=add_group,json=addGroup,proto3" json:"add_group,omitempty"`
 	// add_label is the text of that button, such as "Add storage group".
 	// Required when add_group is set.
@@ -1668,7 +1683,7 @@ const file_silo_plugin_v1_common_proto_rawDesc = "" +
 	"\x0fAdminFormOption\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xf9\x04\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\x93\x05\n" +
 	"\x0eAdminFormField\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12 \n" +
@@ -1687,7 +1702,8 @@ const file_silo_plugin_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"validation\x18\x0e \x01(\v2#.silo.plugin.v1.AdminFormValidationR\n" +
 	"validation\x122\n" +
-	"\x15exclusive_group_field\x18\x0f \x01(\tR\x13exclusiveGroupField\"B\n" +
+	"\x15exclusive_group_field\x18\x0f \x01(\tR\x13exclusiveGroupField\x12\x18\n" +
+	"\aordered\x18\x10 \x01(\bR\aordered\"B\n" +
 	"\x12AdminFormCondition\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x16\n" +
 	"\x06equals\x18\x02 \x03(\tR\x06equals\"\xc3\x01\n" +

@@ -59,6 +59,12 @@ message AdminFormField {
   // group; at most one connection per distinct value of that field may have THIS
   // field truthy. Empty = no exclusivity.
   string exclusive_group_field = 15;
+  // ordered says the order of a MULTI_SELECT's values matters, such as
+  // folders that are filled one after another. The host shows the chosen
+  // values as a list the admin can put in order, and stores them in that
+  // order. False = the values are a set, in no particular order. Only valid
+  // on ADMIN_FORM_CONTROL_MULTI_SELECT.
+  bool ordered = 16;
 }
 
 // AdminFormCondition: the owning field/section is shown only when, for every
@@ -99,7 +105,9 @@ message AdminFormSection {
   // slots: two slots trade places by trading the values of their fields at
   // the same position in field_keys, so every slot of a list declares the
   // same fields in the same order. A slot whose first field is a text field
-  // shows that value in its header. Empty = an ordinary section.
+  // shows that value in its header. The admin can also remove a slot: the
+  // slots after it move up one place and the last one is emptied. Empty = an
+  // ordinary section.
   string add_group = 8;
   // add_label is the text of that button, such as "Add storage group".
   // Required when add_group is set.

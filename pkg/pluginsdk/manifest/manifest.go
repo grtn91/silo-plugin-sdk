@@ -812,6 +812,9 @@ func validateConfigSchema(schema *pluginv1.ConfigSchema) error {
 				return fmt.Errorf("plugin config schema %q admin_form field %q show_when references unknown field %q", schema.GetKey(), key, cond.GetField())
 			}
 		}
+		if field.GetOrdered() && field.GetControl() != pluginv1.AdminFormControl_ADMIN_FORM_CONTROL_MULTI_SELECT {
+			return fmt.Errorf("plugin config schema %q admin_form field %q ordered is only for a multi-select", schema.GetKey(), key)
+		}
 		if eg := field.GetExclusiveGroupField(); eg != "" {
 			if !hasReference(eg) {
 				return fmt.Errorf("plugin config schema %q admin_form field %q exclusive_group_field references unknown field %q", schema.GetKey(), key, eg)

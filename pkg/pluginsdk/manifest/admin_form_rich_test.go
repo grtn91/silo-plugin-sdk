@@ -364,3 +364,35 @@ func TestSectionAddGroup(t *testing.T) {
 		}
 	}
 }
+
+// TestOrderedIsForMultiSelect checks that only a multi-select can say the
+// order of its values matters.
+func TestOrderedIsForMultiSelect(t *testing.T) {
+	load := func(control string) error {
+		_, err := manifest.Load([]byte(`{
+		  "plugin_id": "silo.example",
+		  "version": "1.0.0",
+		  "silo_api_version": "v1",
+		  "capabilities": [{
+		    "type": "request_router.v1", "id": "arr", "display_name": "X", "description": "Y",
+		    "config_schema": [{
+		      "key": "connection",
+		      "title": "Connection",
+		      "json_schema": "{\"type\":\"object\",\"properties\":{\"folders\":{\"type\":\"array\"}}}",
+		      "admin_form": {
+		        "fields": [
+		          {"key":"folders","label":"Folders","control":"` + control + `","dynamic_options":true,"ordered":true}
+		        ]
+		      }
+		    }]
+		  }]
+		}`))
+		return err
+	}
+	if err := load("ADMIN_FORM_CONTROL_MULTI_SELECT"); err != nil {
+		t.Fatalf("Load refused an ordered multi-select: %v", err)
+	}
+	if err := load("ADMIN_FORM_CONTROL_SELECT"); err == nil || !strings.Contains(err.Error(), "ordered") {
+		t.Fatalf("want an ordered error for a select, got %v", err)
+	}
+}

@@ -208,6 +208,14 @@ install a binary that declares them; install it from an archive there. The
 slots' fields are ordinary config keys, so nothing changes in what the plugin
 reads.
 
+`AdminFormField.ordered` says that the order of a multi-select's values
+matters. False is the behaviour hosts had before the field existed: the values
+are stored in the order they were chosen and cannot be rearranged. Hosts that
+predate the field drop it when they install a plugin archive and show the
+multi-select as before, and a Silo host that predates it refuses a bare plugin
+binary that declares it. The stored value is the same list of values either
+way.
+
 `MetadataItem.overview_language` and the `title_language` and
 `overview_language` fields on `SeasonRecord` and `EpisodeRecord` (added in
 v0.29.0) are plain strings, like the older `MetadataItem.title_language`.
