@@ -14,7 +14,9 @@ release builds resolve the SDK from a published module tag.
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/capability` — stable capability type constants for manifests and peer discovery.
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/config` — config-schema helpers.
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/convert` — type conversions.
+- `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/events` — the host event catalog: event names, access classes, and typed payloads (see [docs/events.md](docs/events.md)).
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/httpclient` — credentialed JSON-over-HTTP client with bounded responses and typed status errors.
+- `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/httproute` — reads the signed-in viewer (account, role, verified profile) the host passes to an `http_routes.v1` handler.
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/imagevariant` — canonical image-size variant strings.
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/manifest` — manifest loading/rendering.
 - `github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/runtime` — `manifest` subcommand + `Runtime` server scaffolding, including `ServeManifestWithOptions` options such as `WithConfigure`, `WithAuthProviderChecks` and `WithConfigurationChecks`.
@@ -29,7 +31,7 @@ The SDK ships protobuf contracts for every capability the host understands:
 - `marker_provider.v1`
 - `media_analyzer.v1`
 - `image_resolver.v1`
-- `scheduled_task.v1`
+- `scheduled_task.v1` (see [docs/scheduled-task.md](docs/scheduled-task.md))
 - `event_consumer.v1`
 - `auth_provider.v1`
 - `http_routes.v1`
@@ -37,6 +39,7 @@ The SDK ships protobuf contracts for every capability the host understands:
 - `scan_source.v1`
 - `watch_sync_provider.v1`
 - `network_access_provider.v1`
+- `notification_channel.v1` (see [docs/notification-channel.md](docs/notification-channel.md))
 - `audiobook_backend.v1`
 - `ebook_backend.v1`
 
@@ -207,8 +210,15 @@ and quality governance; the plugin routes the request to a configured
 connection and reports its status.
 
 A series request may name seasons in `RequestDescriptor.seasons`. Season `0`
-is Specials, and an empty list means the whole series. A plugin that fulfils
-seasons individually declares it in its manifest:
+is Specials, and an empty list means the whole series. Season numbers are the
+host's (TMDB's), and download services number some series differently, so
+`RequestDescriptor.season_details` also gives each requested season's first
+air date and episode count. A plugin finds a season's detail by its `number`
+and matches the season as the first that many regular episodes airing from
+that date, or the ones it finds when fewer match. A season with no detail, a
+detail without a date or count, and a detail that matches no episode are
+matched by number. A plugin that fulfils seasons individually declares it in
+its manifest:
 
 ```json
 {
@@ -311,6 +321,55 @@ refuses to install a bare plugin binary that declares them; see
 [docs/compatibility.md](docs/compatibility.md). The SDK's `httpclient` refuses
 an empty key or base URL, so a plugin that declares either flag needs its own
 client for connections without them.
+
+### Requester options
+
+By default a request goes out with the settings the admin saved on the server,
+or a routing rule's. A plugin can let the requester, or the admin who
+approves, choose some of them, such as a quality profile, by listing the
+config fields in its manifest:
+
+```json
+{
+  "type": "request_router.v1",
+  "id": "seerr",
+  "request_router": {
+    "requester_options": [
+      { "field": "radarr_profile_id", "media_type": "movie", "label": "Quality", "chooser_field": "profile_chosen_by" },
+      { "field": "sonarr_profile_id", "media_type": "series", "label": "Quality", "chooser_field": "profile_chosen_by" }
+    ]
+  }
+}
+```
+
+- `field`: a select field of the capability's admin form with
+  `dynamic_options`, over a string property of the `json_schema`. The host
+  offers the choices `ListConfigOptions` returns for it on the server the
+  request would go to, and sets the pick as that string.
+- `media_type`: `movie` or `series`; empty offers the option for both. A field
+  may be listed once per media type.
+- `label`: what requesters see, at most 24 characters on a single line. Empty
+  means the form field's label.
+- `chooser_field`: a select in the same form that lists its own options, each
+  with one of these values, so an admin decides per server who chooses:
+  - `admin`: nobody; the saved value applies. Also what any other or missing
+    value means.
+  - `requester`: the requester when requesting. An approving admin may change
+    the pick.
+  - `approver`: the admin when approving.
+
+  Empty lets requesters choose on every server. Because it is a select, a
+  routing rule can override it like any other.
+
+The plugin needs no other code. The host checks a pick against
+the listed choices and passes it to `Fulfill` as that key of
+`RouterConnection.config`, over the server's own value and a routing rule's.
+When nobody picks, the config stays as the admin set it. Every
+choice `ListConfigOptions` returns for the field is open to every requester
+who may request, so list only fields whose choices are safe to hand out.
+A host that predates the field ignores it when it installs the plugin from
+an archive. [docs/compatibility.md](docs/compatibility.md) lists the two
+cases where an older host rejects it.
 
 ### Wording
 

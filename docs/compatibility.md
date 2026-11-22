@@ -52,6 +52,14 @@ with a `default` arm rather than an exhaustive match, and do not assume the
 constants shipped in any given SDK tag are the complete set. The same rule
 applies to any future open vocabulary added to `v1`.
 
+Event subscriptions are open too. The manifest validator doesn't check them,
+so manifests that predate the event catalog keep loading, and a plugin built
+against a newer SDK loads on an older host, which ignores an event it doesn't
+deliver. `manifest.SubscriptionProblems` reports names no host delivers, for a
+plugin's own tests. The catalog and its payload types in `pkg/pluginsdk/events`
+change additively: an event or a payload field is never renamed or removed
+(see [events.md](events.md)).
+
 `FetchMarkersRequest.episode_numbering` and `SubmitMarkerRequest.episode_numbering`
 are open too. Hosts send an external ID key, today `tvdb` or `tmdb`, or leave the
 field empty when they cannot tell. A marker provider treats a value it does not
@@ -146,6 +154,17 @@ wire, the host decides who may receive a season-only request from the
 manifest's `RequestRouterDescriptor.supports_seasons` flag instead. An absent
 descriptor means the flag is false.
 
+`RequestDescriptor.season_details` (added in v0.34.0) is a repeated field, so
+it has no presence: a host that predates it, a whole-series request, and a
+request made before the host stored the details all send an empty list. A
+plugin then matches `seasons` by number, as before. The list may leave out
+seasons in `seasons`, so a plugin finds each detail by its `number`, not its
+position. A season with no detail, a detail with an empty `first_air_date` or
+an `episode_count` of 0, and a detail that matches no episode in the plugin's
+service are matched by number too, and so is season `0` (Specials) whatever
+its detail says. When fewer than `episode_count` episodes match, the season is
+the ones that do. A plugin built before the field existed ignores it.
+
 `TargetStatus.progress` is a message field, so its presence is the `nil` check.
 Unset means the target has nothing in flight, and the host clears the progress
 it stored for it. A set `progress` must carry a `phase`: the host counts one
@@ -183,6 +202,24 @@ there (Silo-Server/silo-server#2436). Hosts read the flags from the capability
 metadata stored when the plugin was installed or updated. A host built on an
 older SDK stored that metadata without them, so they take effect after the
 plugin is next updated on a host that reads them.
+
+`RequestRouterDescriptor.requester_options` is a repeated message field read
+from the manifest. Empty, or an absent descriptor, means requesters choose
+nothing, which is the behaviour hosts had before the field existed. Hosts that
+predate it drop it as an unknown field when they load a plugin archive's
+manifest, which every SDK version does, and never offer the choice, so a
+plugin can declare options without raising its minimum host version. Two
+decoding paths are stricter. Silo reads a bare plugin binary's manifest
+strictly, so a Silo host that predates the field refuses to install a binary
+that declares it; install it from an archive there. And a host built on an SDK
+older than v0.13.1 rejects stored capability metadata that carries a field it
+does not know, so in a cluster that shares one database, upgrade such nodes
+before a plugin that declares options is installed. The plugin's RPCs do not change: a host
+that reads the field passes a requester's or approving admin's pick as a key of
+`RouterConnection.config`, where the plugin already reads the admin's value.
+Hosts read the field from the capability metadata stored when the plugin was
+installed or updated, so it takes effect after the plugin is next updated on a
+host that reads it.
 
 `MetadataItem.overview_language` and the `title_language` and
 `overview_language` fields on `SeasonRecord` and `EpisodeRecord` (added in
@@ -242,6 +279,16 @@ A host with #2502 but an SDK older than v0.33.0 installs and starts the plugin
 and ignores the field, so it applies its usual idle-stop rule. The field takes
 effect only on a host that both stops idle plugins and reads it; on a host that
 never stops idle plugins, it changes nothing.
+
+### New capability types
+
+Manifest validation refuses a capability type its SDK doesn't know, and it
+refuses the whole plugin, not only that capability: an older host fails to
+install or load it with `plugin capability "<id>": unknown type "<type>"`.
+A plugin that declares a newer type, such as `notification_channel.v1`,
+therefore needs a host built on an SDK that knows it. Ship a new capability
+type in its own plugin rather than adding it to one that must keep working
+on older hosts.
 
 ### Watch-sync batch size
 

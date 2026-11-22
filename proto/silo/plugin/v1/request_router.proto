@@ -38,6 +38,36 @@ message RequestDescriptor {
   // declare RequestRouterDescriptor.supports_seasons must fulfil only these
   // seasons; see that field for the full contract.
   repeated int32 seasons = 10;
+  // season_details describes each requested season as the host's metadata
+  // source (TMDB) numbers it, so a plugin whose download service numbers the
+  // series differently can find the same episodes. It describes the seasons
+  // in `seasons` that the host has details for, in the same order, and may
+  // leave some out, so a plugin finds a season's detail by
+  // RequestedSeason.number rather than by position. It is empty for a
+  // whole-series request and for requests made before the field existed.
+  repeated RequestedSeason season_details = 11;
+}
+
+// RequestedSeason is one requested season as the host's metadata source
+// numbers it. Download services can split or merge seasons differently (one
+// 24-episode season on TMDB can be two 12-episode seasons on Sonarr); a
+// plugin matches by air date rather than by number: the season is the first
+// episode_count regular episodes, in airing order, that air on or after
+// first_air_date. When fewer episodes match, the season is the ones that do.
+// The plugin matches the season by number instead when it has no detail, when
+// the detail has no date or a count of 0, or when no episode matches. Specials
+// (season 0) are not regular episodes and are always matched by number; a host
+// need not describe them.
+message RequestedSeason {
+  // number is the season number in `RequestDescriptor.seasons`.
+  int32 number = 1;
+  // first_air_date is the season's first air date as YYYY-MM-DD, or empty
+  // when it has none yet; the plugin then matches the season by number.
+  string first_air_date = 2;
+  // episode_count is the number of episodes the season had when the request
+  // was made, or 0 when unknown; the plugin then matches the season by
+  // number. Episodes the season gains later are not counted.
+  int32 episode_count = 3;
 }
 
 // RequestRouterDescriptor is typed request_router.v1 contract metadata that the
@@ -73,6 +103,42 @@ message RequestRouterDescriptor {
   // base_url_optional declares that the plugin works without a base URL. The
   // host's admin form then saves and tests a server without one.
   bool base_url_optional = 5;
+  // requester_options lists the connection settings a requester may choose
+  // when making a request, such as a quality profile. Empty means requesters
+  // choose nothing, which is how hosts treat plugins built before this field.
+  repeated RequesterOption requester_options = 6;
+}
+
+// RequesterOption lets the requester, or the admin who approves, choose one
+// connection setting for a single request. The host offers the choices that
+// ListConfigOptions returns for field on the server the request would go to,
+// checks the pick against them, and passes it to Fulfill as that key of
+// RouterConnection.config, over the server's own value and over a routing
+// rule's. The plugin reads the config as it always does, so honouring a pick
+// needs no code beyond the manifest. When nobody picks, the config stays as
+// the admin set it.
+message RequesterOption {
+  // field is the config key the requester sets. It must name a select field
+  // of the capability's admin form that has dynamic_options, so the host has
+  // a list to offer and to check a pick against. Its json_schema property
+  // must be a string: a pick is a ConfigOption value, and the host sets it
+  // as that string.
+  string field = 1;
+  // media_type limits the option to requests of one media type: "movie" or
+  // "series". Empty offers it for both.
+  string media_type = 2;
+  // label names the choice to requesters, e.g. "Quality". Empty means the
+  // admin form field's label. At most 24 characters, on a single line
+  // without leading or trailing spaces.
+  string label = 3;
+  // chooser_field is the config key of a select in the capability's admin
+  // form that names who chooses on a server: "admin" (nobody; the saved value
+  // applies), "requester" (the requester when requesting; an approving admin
+  // may change it) or "approver" (the admin when approving). The select lists
+  // its options itself, each with one of those values. A server with any
+  // other value, or none, is "admin". Empty lets requesters choose on every
+  // server.
+  string chooser_field = 4;
 }
 
 // RequestRouterWording names the part of a request that a request router
